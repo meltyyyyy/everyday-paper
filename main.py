@@ -5,12 +5,8 @@ import arxiv
 import openai
 import random
 
-#OpenAIのapiキー
-openai.api_key = 'OpenAIのAPIキー'
-# Slack APIトークン
-SLACK_API_TOKEN = 'SlackbotのBot User OAuth Token'
-# Slackに投稿するチャンネル名を指定する
-SLACK_CHANNEL = "#general"
+openai.api_key = os.environ["OPENAI_API_KEY"]
+SLACK_CHANNEL = "#notifications"
 
 def get_summary(result):
     system = """与えられた論文の要点を3点のみでまとめ、以下のフォーマットで日本語で出力してください。```
@@ -39,32 +35,25 @@ def get_summary(result):
     return message
 
 def main(event, context):
-    # Slack APIクライアントを初期化する
-    client = WebClient(token=SLACK_API_TOKEN)
-    #queryを用意
+    client = WebClient(token=os.environ["SLACK_API_TOKEN"])
+    
     query ='ti:%22 Deep Learning %22'
-
-    # arxiv APIで最新の論文情報を取得する
     search = arxiv.Search(
-        query=query,  # 検索クエリ（
-        max_results=100,  # 取得する論文数
-        sort_by=arxiv.SortCriterion.SubmittedDate,  # 論文を投稿された日付でソートする
-        sort_order=arxiv.SortOrder.Descending,  # 新しい論文から順に取得する
+        query=query,
+        max_results=100,
+        sort_by=arxiv.SortCriterion.SubmittedDate,
+        sort_order=arxiv.SortOrder.Descending,
     )
-    #searchの結果をリストに格納
+
     result_list = []
     for result in search.results():
         result_list.append(result)
-    #ランダムにnum_papersの数だけ選ぶ
+
     num_papers = 3
     results = random.sample(result_list, k=num_papers)
-    
-    # 論文情報をSlackに投稿する
     for i,result in enumerate(results):
         try:
-            # Slackに投稿するメッセージを組み立てる
             message = "今日の論文です！ " + str(i+1) + "本目\n" + get_summary(result)
-            # Slackにメッセージを投稿する
             response = client.chat_postMessage(
                 channel=SLACK_CHANNEL,
                 text=message
@@ -72,3 +61,6 @@ def main(event, context):
             print(f"Message posted: {response['ts']}")
         except SlackApiError as e:
             print(f"Error posting message: {e}")
+
+if __name__ == "__main__":
+    main(1, 2)
